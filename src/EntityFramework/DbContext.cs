@@ -56,14 +56,14 @@ namespace Microsoft.Data.Entity
 
             var genericOptions = _optionsTypes.GetOrAdd(GetType(), t => typeof(DbContextOptions<>).MakeGenericType(t));
 
-            var optionsAccessor = (IOptions<DbContextOptions>)serviceProvider.TryGetService(
-                typeof(IOptions<>).MakeGenericType(genericOptions));
+            var optionsAccessor = (IOptionsAccessor<DbContextOptions>)serviceProvider.TryGetService(
+                typeof(IOptionsAccessor<>).MakeGenericType(genericOptions));
             if (optionsAccessor != null)
             {
                 return optionsAccessor.Options;
             }
 
-            optionsAccessor = serviceProvider.TryGetService<IOptions<DbContextOptions>>();
+            optionsAccessor = serviceProvider.TryGetService<IOptionsAccessor<DbContextOptions>>();
             if (optionsAccessor != null)
             {
                 return optionsAccessor.Options;
