@@ -301,7 +301,7 @@ namespace Microsoft.Data.Entity.Commands.Migrations
             {
                 stringBuilder
                     .AppendLine()
-                    .Append("b.TableName(")
+                    .Append("b.ToTable(")
                     .Append(DelimitString(tableName));
 
                 var schema = entityType[SchemaAnnotationName];

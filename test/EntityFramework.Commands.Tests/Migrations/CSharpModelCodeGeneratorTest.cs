@@ -615,13 +615,14 @@ return builder.Model;",
         }
 
         [Fact]
-        public void Generate_outputs_property_value_generation_settings()
+        public void Generate_outputs_code_using_extension_methods()
         {
             var builder = new BasicModelBuilder();
             builder.Entity<Customer>(b =>
             {
                 b.Key(e => e.Id);
                 b.Property(e => e.Id).GenerateValuesOnAdd();
+                b.ToTable("CustomerTable", "dbo");
             });
 
             var stringBuilder = new IndentedStringBuilder();
@@ -635,10 +636,13 @@ builder.Entity(""Microsoft.Data.Entity.Commands.Tests.Migrations.CSharpModelCode
         b.Property<int>(""Id"")
             .GenerateValuesOnAdd();
         b.Key(""Id"");
+        b.ToTable(""CustomerTable"", ""dbo"");
     });
 
 return builder.Model;",
                 stringBuilder.ToString());
+
+            GenerateAndValidateCode(builder.Model);
         }
 
         [Fact]
@@ -706,6 +710,7 @@ namespace MyNamespace
                         "mscorlib", 
                         "System.Runtime",
                         "EntityFramework",
+                        "EntityFramework.Relational",
                         "EntityFramework.Migrations"
                     });
             var compiledModelSnapshot = (ModelSnapshot)
