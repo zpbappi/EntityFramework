@@ -95,6 +95,11 @@ namespace Microsoft.Data.Entity.Migrations
                 table.PrimaryKey = createTableOperation.Table.PrimaryKey.Clone(cloneContext);
             }
 
+            foreach (var uniqueConstraint in createTableOperation.Table.UniqueConstraints)
+            {
+                table.AddUniqueConstraint(uniqueConstraint.Clone(cloneContext));
+            }
+
             databaseModel.AddTable(table);
         }
 
