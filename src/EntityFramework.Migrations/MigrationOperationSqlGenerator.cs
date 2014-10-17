@@ -217,6 +217,21 @@ namespace Microsoft.Data.Entity.Migrations
                         uniqueConstraint.Columns.Select(c => c.Name).ToArray()),
                     stringBuilder);
             }
+
+            foreach (var foreignKey in table.ForeignKeys)
+            {
+                stringBuilder.AppendLine(",");
+
+                GenerateForeignKey(
+                    new AddForeignKeyOperation(
+                        foreignKey.Table.Name,
+                        foreignKey.Name,
+                        foreignKey.Columns.Select(c => c.Name).ToArray(),
+                        foreignKey.ReferencedTable.Name,
+                        foreignKey.ReferencedColumns.Select(c => c.Name).ToArray(),
+                        foreignKey.CascadeDelete),
+                    stringBuilder);
+            }
         }
 
         public virtual void Generate([NotNull] DropTableOperation dropTableOperation, [NotNull] IndentedStringBuilder stringBuilder)

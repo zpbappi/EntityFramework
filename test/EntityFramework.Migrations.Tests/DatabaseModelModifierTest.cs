@@ -121,8 +121,14 @@ namespace Microsoft.Data.Entity.Migrations.Tests
             Assert.Equal(new[] { "Id" }, model.Tables[0].PrimaryKey.Columns.Select(c => c.Name));
             Assert.False(model.Tables[0].PrimaryKey.IsClustered);
 
-            Assert.Equal(0, model.Tables[0].ForeignKeys.Count);
-            Assert.Equal(0, model.Tables[0].Indexes.Count);
+            Assert.Equal(1, model.Tables[0].ForeignKeys.Count);
+            Assert.Equal("FK", model.Tables[0].ForeignKeys[0].Name);
+            Assert.Equal(new[] { "Id" }, model.Tables[0].ForeignKeys[0].Columns.Select(c => c.Name));
+            Assert.Equal(new[] { "Id" }, model.Tables[0].ForeignKeys[0].ReferencedColumns.Select(c => c.Name));
+
+            Assert.Equal(1, model.Tables[0].Indexes.Count);
+            Assert.Equal("IX", model.Tables[0].Indexes[0].Name);
+            Assert.Equal(new[] { "C" }, model.Tables[0].Indexes[0].Columns.Select(c => c.Name));
         }
 
         [Fact]

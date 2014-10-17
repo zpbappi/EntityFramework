@@ -8,12 +8,56 @@ using JetBrains.Annotations;
 using Microsoft.Data.Entity.Migrations.Model;
 using Microsoft.Data.Entity.Relational;
 using Microsoft.Data.Entity.Relational.Model;
+using Microsoft.Data.Entity.Relational.Utilities;
 using Microsoft.Data.Entity.SqlServer.Utilities;
 
 namespace Microsoft.Data.Entity.SqlServer
 {
     public class SqlServerMigrationOperationPreProcessor : MigrationOperationVisitor<SqlServerMigrationOperationPreProcessor.Context>
     {
+        public override void Visit(CreateTableOperation createTableOperation, Context context)
+        {
+            Check.NotNull(createTableOperation, "createTableOperation");
+            Check.NotNull(context, "context");
+
+            context.HandleDeferredOperations(createTableOperation.Table.Name);
+
+            var database = context.Generator.Database;
+            var table = createTableOperation.Table.Clone(new CloneContext());
+
+            foreach (var foreignKey in table.ForeignKeys
+                .Where(fk => database.TryGetTable(fk.ReferencedTable.Name) == null))
+            {
+                table.RemoveForeignKey(foreignKey.Name);
+
+                context.DeferOperation(foreignKey.ReferencedTable.Name, new AddForeignKeyOperation(foreignKey));
+            }
+
+            context.HandleOperation(new CreateTableOperation(table));
+        }
+
+        public override void Visit(DropTableOperation dropTableOperation, Context context)
+        {
+            Check.NotNull(dropTableOperation, "dropTableOperation");
+            Check.NotNull(context, "context");
+
+            var compositeOperation
+                = context.CompositeOperation as DropTableCompositeOperation
+                  ?? new DropTableCompositeOperation();
+
+            var database = context.Generator.Database;
+            var table = database.GetTable(dropTableOperation.TableName);
+
+            compositeOperation.AddForeignKeys(
+                database.Tables
+                    .SelectMany(t => t.ForeignKeys)
+                    .Where(fk => fk.ReferencedTable.Name == table.Name));
+
+            compositeOperation.AddOperation(dropTableOperation);
+
+            context.HandleCompositeOperation(compositeOperation);
+        }
+
         public override void Visit(DropColumnOperation dropColumnOperation, Context context)
         {
             Check.NotNull(dropColumnOperation, "dropColumnOperation");
@@ -41,8 +85,8 @@ namespace Microsoft.Data.Entity.SqlServer
             Check.NotNull(context, "context");
 
             var compositeOperation
-                = context.CompositeOperation as CompositeAlterColumnOperation
-                  ?? new CompositeAlterColumnOperation();
+                = context.CompositeOperation as AlterColumnCompositeOperation
+                  ?? new AlterColumnCompositeOperation();
 
             var database = context.Generator.Database;
             var table = database.GetTable(alterColumnOperation.TableName);
@@ -137,6 +181,8 @@ namespace Microsoft.Data.Entity.SqlServer
         {
             private readonly SqlServerMigrationOperationSqlGenerator _generator;
             private readonly List<SqlStatement> _statements = new List<SqlStatement>();
+            private readonly IDictionary<string, List<MigrationOperation>> _deferredOperations
+                = new Dictionary<string, List<MigrationOperation>>();
 
             public Context([NotNull] SqlServerMigrationOperationSqlGenerator generator)
             {
@@ -155,6 +201,7 @@ namespace Microsoft.Data.Entity.SqlServer
                 get
                 {
                     HandleCompositeOperation(null);
+                    HandleDeferredOperations();
 
                     return _statements;
                 }
@@ -190,6 +237,47 @@ namespace Microsoft.Data.Entity.SqlServer
 
                 CompositeOperation = compositeOperation;
             }
+
+            public virtual void DeferOperation(
+                [NotNull] string objectName, [NotNull] MigrationOperation operation)
+            {
+                Check.NotEmpty(objectName, "objectName");
+                Check.NotNull(operation, "operation");
+
+                List<MigrationOperation> operations;
+
+                if (!_deferredOperations.TryGetValue(objectName, out operations))
+                {
+                    _deferredOperations.Add(objectName, operations = new List<MigrationOperation>());
+                }
+
+                operations.Add(operation);
+            }
+
+            public virtual void HandleDeferredOperations([NotNull] string objectName)
+            {
+                Check.NotEmpty(objectName, "objectName");
+
+                List<MigrationOperation> operations;
+
+                if (!_deferredOperations.TryGetValue(objectName, out operations))
+                {
+                    return;
+                }
+
+                foreach (var operation in operations)
+                {
+                    HandleOperation(operation);
+                }
+            }
+
+            public virtual void HandleDeferredOperations()
+            {
+                foreach (var operation in _deferredOperations.SelectMany(p => p.Value))
+                {
+                    HandleOperation(operation);
+                }
+            }
         }
 
         public class CompositeOperation
@@ -209,7 +297,7 @@ namespace Microsoft.Data.Entity.SqlServer
             }
         }
 
-        public class CompositeAlterColumnOperation : CompositeOperation
+        public class CompositeOperationWithConstraints : CompositeOperation
         {
             private readonly List<PrimaryKey> _primaryKeys = new List<PrimaryKey>();
             private readonly List<UniqueConstraint> _uniqueConstraints = new List<UniqueConstraint>();
@@ -263,6 +351,14 @@ namespace Microsoft.Data.Entity.SqlServer
 
                 _indexes.AddRange(indexes.Where(ix => !_indexes.Contains(ix)));
             }
+        }
+
+        public class DropTableCompositeOperation : CompositeOperationWithConstraints
+        {
+        }
+
+        public class AlterColumnCompositeOperation : CompositeOperationWithConstraints
+        {
         }
     }
 }

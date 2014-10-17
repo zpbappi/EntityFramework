@@ -84,18 +84,7 @@ namespace Microsoft.Data.Entity.Migrations
             Check.NotNull(createTableOperation, "createTableOperation");
             Check.NotNull(databaseModel, "databaseModel");
 
-            var cloneContext = new CloneContext();
-            var table
-                = new Table(
-                    createTableOperation.Table.Name,
-                    createTableOperation.Table.Columns.Select(c => c.Clone(cloneContext)));
-
-            if (createTableOperation.Table.PrimaryKey != null)
-            {
-                table.PrimaryKey = createTableOperation.Table.PrimaryKey.Clone(cloneContext);
-            }
-
-            databaseModel.AddTable(table);
+            databaseModel.AddTable(createTableOperation.Table.Clone(new CloneContext()));
         }
 
         public override void Visit(DropTableOperation dropTableOperation, DatabaseModel databaseModel)

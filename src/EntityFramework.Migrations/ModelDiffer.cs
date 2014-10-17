@@ -54,29 +54,9 @@ namespace Microsoft.Data.Entity.Migrations
             var createTableOperations = database.Tables.Select(
                 t => new CreateTableOperation(t));
 
-            var addForeignKeyOperations = database.Tables.SelectMany(
-                t => t.ForeignKeys,
-                (t, fk) => new AddForeignKeyOperation(
-                    fk.Table.Name,
-                    fk.Name,
-                    fk.Columns.Select(c => c.Name).ToArray(),
-                    fk.ReferencedTable.Name,
-                    fk.ReferencedColumns.Select(c => c.Name).ToArray(),
-                    fk.CascadeDelete));
-
-            var createIndexOperations = database.Tables.SelectMany(
-                t => t.Indexes,
-                (t, idx) => new CreateIndexOperation(
-                    idx.Table.Name,
-                    idx.Name,
-                    idx.Columns.Select(c => c.Name).ToArray(),
-                    idx.IsUnique, idx.IsClustered));
-
             return
                 ((IEnumerable<MigrationOperation>)createSequenceOperations)
                     .Concat(createTableOperations)
-                    .Concat(addForeignKeyOperations)
-                    .Concat(createIndexOperations)
                     .ToArray();
         }
 
@@ -96,16 +76,11 @@ namespace Microsoft.Data.Entity.Migrations
             var dropSequenceOperations = database.Sequences.Select(
                 s => new DropSequenceOperation(s.Name));
 
-            var dropForeignKeyOperations = database.Tables.SelectMany(
-                t => t.ForeignKeys,
-                (t, fk) => new DropForeignKeyOperation(fk.Table.Name, fk.Name));
-
             var dropTableOperations = database.Tables.Select(
                 t => new DropTableOperation(t.Name));
 
             return
                 ((IEnumerable<MigrationOperation>)dropSequenceOperations)
-                    .Concat(dropForeignKeyOperations)
                     .Concat(dropTableOperations)
                     .ToArray();
         }
