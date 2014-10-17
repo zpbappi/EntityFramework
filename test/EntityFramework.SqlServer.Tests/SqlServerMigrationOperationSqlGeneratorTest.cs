@@ -96,6 +96,50 @@ namespace Microsoft.Data.Entity.SqlServer.Tests
         }
 
         [Fact]
+        public void Generate_when_create_table_with_string_foreign_key()
+        {
+            var modelBuilder = new BasicModelBuilder();
+            modelBuilder.Entity("A",
+                b =>
+                    {
+                        b.Property<string>("Id");
+                        b.Key("Id");
+                    });
+            modelBuilder.Entity("B",
+                b =>
+                    {
+                        b.Property<int>("Id");
+                        b.Property<string>("P");
+                        b.Key("Id");
+                        b.ForeignKey("A", "P");
+                    });
+
+            var operations
+                = new SqlServerModelDiffer(
+                    new SqlServerDatabaseBuilder(
+                        new SqlServerTypeMapper()))
+                    .CreateSchema(modelBuilder.Model);
+
+            Assert.Equal(3, operations.Count);
+            Assert.Equal(
+@"CREATE TABLE [A] (
+    [Id] nvarchar(128),
+    CONSTRAINT [PK_A] PRIMARY KEY ([Id])
+)",
+                Generate(operations[0]).Sql);
+            Assert.Equal(
+@"CREATE TABLE [B] (
+    [Id] int NOT NULL,
+    [P] nvarchar(128),
+    CONSTRAINT [PK_B] PRIMARY KEY ([Id])
+)",
+                Generate(operations[1]).Sql);
+            Assert.Equal(
+@"ALTER TABLE [B] ADD CONSTRAINT [FK_B_A_P] FOREIGN KEY ([P]) REFERENCES [A] ([Id])",
+                Generate(operations[2]).Sql);
+        }
+
+        [Fact]
         public void Generate_when_create_table_operation_with_Identity_key()
         {
             Column foo, bar;
