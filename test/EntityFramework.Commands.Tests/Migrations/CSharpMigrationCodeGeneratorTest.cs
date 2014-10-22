@@ -11,6 +11,8 @@ using Microsoft.Data.Entity.Migrations.Model;
 using Microsoft.Data.Entity.Relational.Model;
 using Microsoft.Data.Entity.Utilities;
 using Xunit;
+using ForeignKey = Microsoft.Data.Entity.Relational.Model.ForeignKey;
+using Index = Microsoft.Data.Entity.Relational.Model.Index;
 
 namespace Microsoft.Data.Entity.Commands.Tests.Migrations
 {
@@ -235,6 +237,85 @@ namespace Microsoft.Data.Entity.Commands.Tests.Migrations
                 CSharpMigrationCodeGenerator.Generate(operation));
 
             GenerateAndValidateCode(operation);
+        }
+
+        [Fact]
+        public void Generate_when_create_table_with_foreign_keys()
+        {
+            Column idA, idB, c1A, c1B;
+            var tableA = new Table("dbo.A",
+                new[]
+                    {
+                        idA = new Column("IdA", typeof(int)) { IsNullable = false, DefaultValue = 5 },
+                        c1A = new Column("C1A", typeof(int)),
+                    })
+                {
+                    PrimaryKey = new PrimaryKey("PKA", new[] { idA })
+                };
+            var tableB = new Table("dbo.B",
+                new[]
+                    {
+                        idB = new Column("IdB", typeof(int)) { IsNullable = false, DefaultValue = 5 },
+                        c1B = new Column("C1B", typeof(int)),
+                    })
+                {
+                    PrimaryKey = new PrimaryKey("PKB", new[] { idB })
+                };
+            tableB.AddForeignKey(new ForeignKey("FK1", new[] { c1B }, new[] { idA }));
+            tableB.AddForeignKey(new ForeignKey("FK2", new[] { idB, c1B }, new[] { idA, c1A }));
+
+            var operation = new CreateTableOperation(tableB);
+
+            Assert.Equal(
+                @"CreateTable(""dbo.B"",
+    c => new
+        {
+            IdB = c.Int(nullable: false, defaultValue: 5),
+            C1B = c.Int()
+        })
+    .PrimaryKey(""PKB"", t => t.IdB)
+    .ForeignKey(""FK1"", t => t.C1B, ""dbo.A"", new[] { ""IdA"" })
+    .ForeignKey(""FK2"", t => new { t.IdB, t.C1B }, ""dbo.A"", new[] { ""IdA"", ""C1A"" })",
+                CSharpMigrationCodeGenerator.Generate(operation));
+
+            GenerateAndValidateCode(operation, idempotent: false);            
+        }
+
+        [Fact]
+        public void Generate_when_create_table_with_indexes()
+        {
+            Column foo, bar, c1, c2;
+            var table = new Table("dbo.MyTable",
+                new[]
+                    {
+                        foo = new Column("Foo", typeof(int)) { IsNullable = false, DefaultValue = 5 },
+                        bar = new Column("Bar", typeof(int)),
+                        c1 = new Column("C1", typeof(string)),
+                        c2 = new Column("C2", typeof(string))
+                    })
+            {
+                PrimaryKey = new PrimaryKey("MyPK", new[] { foo })
+            };
+            table.AddIndex(new Index("MyIX1", new[] { c1 }, isUnique: true));
+            table.AddIndex(new Index("MyIX2", new[] { bar, c2 }));
+
+            var operation = new CreateTableOperation(table);
+
+            Assert.Equal(
+                @"CreateTable(""dbo.MyTable"",
+    c => new
+        {
+            Foo = c.Int(nullable: false, defaultValue: 5),
+            Bar = c.Int(),
+            C1 = c.String(),
+            C2 = c.String()
+        })
+    .PrimaryKey(""MyPK"", t => t.Foo)
+    .Index(""MyIX1"", t => t.C1, unique: true)
+    .Index(""MyIX2"", t => new { t.Bar, t.C2 }, unique: false)",
+                CSharpMigrationCodeGenerator.Generate(operation));
+
+            GenerateAndValidateCode(operation, idempotent: false);
         }
 
         [Fact]
@@ -689,7 +770,7 @@ namespace MyNamespace
 
         #region Helper methods
 
-        private void GenerateAndValidateCode(MigrationOperation operation)
+        private void GenerateAndValidateCode(MigrationOperation operation, bool idempotent = true)
         {
             GenerateAndValidateCode(
                 new MigrationInfo("000000000000000_Migration")
@@ -697,10 +778,11 @@ namespace MyNamespace
                         UpgradeOperations = new[] { operation },
                         DowngradeOperations = new[] { operation },
                         TargetModel = new Model()
-                    });
+                    },
+                idempotent);
         }
 
-        private void GenerateAndValidateCode(MigrationInfo migration)
+        private void GenerateAndValidateCode(MigrationInfo migration, bool idempotent)
         {
             var @namespace = GetType().Namespace + ".DynamicallyCompiled";
             var className = "Migration" + Guid.NewGuid().ToString("N");
@@ -741,8 +823,11 @@ namespace MyNamespace
             generator.GenerateMigrationClass(@namespace, className, compiledMigration, migrationBuilder);
             generator.GenerateMigrationMetadataClass(@namespace, className, compiledMigration, typeof(DbContext), migrationMetadataBuilder);
 
-            Assert.Equal(migrationSource, migrationBuilder.ToString());
-            Assert.Equal(migrationMetadataSource, migrationMetadataBuilder.ToString());
+            if (idempotent)
+            {
+                Assert.Equal(migrationSource, migrationBuilder.ToString());
+                Assert.Equal(migrationMetadataSource, migrationMetadataBuilder.ToString());
+            }
         }
 
         #endregion

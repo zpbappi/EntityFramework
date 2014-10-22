@@ -15,6 +15,8 @@ using Microsoft.Data.Entity.Migrations.Infrastructure;
 using Microsoft.Data.Entity.Migrations.Model;
 using Microsoft.Data.Entity.Relational.Model;
 using Microsoft.Data.Entity.Utilities;
+using ForeignKey = Microsoft.Data.Entity.Relational.Model.ForeignKey;
+using Index = Microsoft.Data.Entity.Relational.Model.Index;
 
 namespace Microsoft.Data.Entity.Commands.Migrations
 {
@@ -345,30 +347,102 @@ namespace Microsoft.Data.Entity.Commands.Migrations
                 var primaryKey = table.PrimaryKey;
                 if (primaryKey != null)
                 {
-                    stringBuilder
-                        .AppendLine()
-                        .Append(".PrimaryKey(")
-                        .Append(GenerateLiteral(primaryKey.Name))
-                        .Append(", ");
-
-                    GenerateColumnReferences(primaryKey.Columns, stringBuilder);
-
-                    stringBuilder.Append(")");
+                    GeneratePrimaryKey(table.PrimaryKey, stringBuilder);
                 }
 
                 foreach (var uniqueConstraint in table.UniqueConstraints)
                 {
-                    stringBuilder
-                        .AppendLine()
-                        .Append(".UniqueConstraint(")
-                        .Append(GenerateLiteral(uniqueConstraint.Name))
-                        .Append(", ");
+                    GenerateUniqueConstraint(uniqueConstraint, stringBuilder);
+                }
 
-                    GenerateColumnReferences(uniqueConstraint.Columns, stringBuilder);
+                foreach (var foreignKey in table.ForeignKeys)
+                {
+                    GenerateForeignKey(foreignKey, stringBuilder);
+                }
 
-                    stringBuilder.Append(")");
+                foreach (var index in table.Indexes)
+                {
+                    GenerateIndex(index, stringBuilder);
                 }
             }
+        }
+
+        protected virtual void GeneratePrimaryKey([NotNull] PrimaryKey primaryKey, [NotNull] IndentedStringBuilder stringBuilder)
+        {
+            Check.NotNull(primaryKey, "primaryKey");
+            Check.NotNull(stringBuilder, "stringBuilder");
+
+            stringBuilder
+                .AppendLine()
+                .Append(".PrimaryKey(")
+                .Append(GenerateLiteral(primaryKey.Name))
+                .Append(", ");
+
+            GenerateColumnReferences(primaryKey.Columns, stringBuilder);
+
+            stringBuilder.Append(")");
+
+            // TODO: Figure out what needs to be done for primaryKey.IsClustered
+        }
+
+        protected virtual void GenerateUniqueConstraint([NotNull] UniqueConstraint uniqueConstraint, [NotNull] IndentedStringBuilder stringBuilder)
+        {
+            Check.NotNull(uniqueConstraint, "uniqueConstraint");
+            Check.NotNull(stringBuilder, "stringBuilder");
+
+            stringBuilder
+                .AppendLine()
+                .Append(".UniqueConstraint(")
+                .Append(GenerateLiteral(uniqueConstraint.Name))
+                .Append(", ");
+
+            GenerateColumnReferences(uniqueConstraint.Columns, stringBuilder);
+
+            stringBuilder.Append(")");
+        }
+
+        protected virtual void GenerateForeignKey([NotNull] ForeignKey foreignKey, [NotNull] IndentedStringBuilder stringBuilder)
+        {
+            Check.NotNull(foreignKey, "foreignKey");
+            Check.NotNull(stringBuilder, "stringBuilder");
+
+            stringBuilder
+                .AppendLine()
+                .Append(".ForeignKey(")
+                .Append(GenerateLiteral(foreignKey.Name))
+                .Append(", ");
+
+            GenerateColumnReferences(foreignKey.Columns, stringBuilder);
+
+            stringBuilder
+                .Append(", ")
+                .Append(GenerateLiteral(foreignKey.ReferencedTable.Name))
+                .Append(", new[] { ")
+                .Append(foreignKey.ReferencedColumns.Select(c => GenerateLiteral(c.Name)).Join())
+                .Append(" })");
+
+            // TODO: Figure out what needs to be done for foreignKey.CascadeDelete
+        }
+
+        protected virtual void GenerateIndex([NotNull] Index index, [NotNull] IndentedStringBuilder stringBuilder)
+        {
+            Check.NotNull(index, "index");
+            Check.NotNull(stringBuilder, "stringBuilder");
+
+            stringBuilder
+                .AppendLine()
+                .Append(".Index(")
+                .Append(GenerateLiteral(index.Name))
+                .Append(", ");
+
+            GenerateColumnReferences(index.Columns, stringBuilder);
+
+            stringBuilder
+                .Append(", unique: ")
+                .Append(GenerateLiteral(index.IsUnique))
+                .Append(")");
+
+            // TODO: Figure out what needs to be done for index.IsClustered
         }
 
         public override void Generate(DropTableOperation dropTableOperation, IndentedStringBuilder stringBuilder)

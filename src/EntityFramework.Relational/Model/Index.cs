@@ -19,8 +19,8 @@ namespace Microsoft.Data.Entity.Relational.Model
         public Index(
             [NotNull] string name,
             [NotNull] IReadOnlyList<Column> columns,
-            bool isUnique,
-            bool isClustered)
+            bool isUnique = false,
+            bool isClustered = false)
         {
             Check.NotEmpty(name, "name");
             Check.NotNull(columns, "columns");
@@ -29,13 +29,6 @@ namespace Microsoft.Data.Entity.Relational.Model
             _columns = columns;
             _isUnique = isUnique;
             _isClustered = isClustered;
-        }
-
-        public Index(
-            [NotNull] string name,
-            [NotNull] IReadOnlyList<Column> columns)
-            : this(name, columns, isUnique: false, isClustered: false)
-        {
         }
 
         public virtual Table Table

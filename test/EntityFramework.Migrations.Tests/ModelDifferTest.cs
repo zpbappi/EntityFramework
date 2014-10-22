@@ -43,30 +43,15 @@ namespace Microsoft.Data.Entity.Migrations.Tests
             var operations = new TestModelDiffer(databaseBuilder).CreateSchema(modelBuider.Model);
             var dbModel = databaseBuilder.GetDatabase(modelBuider.Model);
 
-            Assert.Equal(4, operations.Count);
+            Assert.Equal(2, operations.Count);
 
             var createTableOperation0 = (CreateTableOperation)operations[0];
             var createTableOperation1 = (CreateTableOperation)operations[1];
 
             Assert.Same(dbModel.Tables[0], createTableOperation0.Table);
             Assert.Same(dbModel.Tables[1], createTableOperation1.Table);
-
-            var addForeignKeyOperation = (AddForeignKeyOperation)operations[2];
-
-            Assert.Equal("FK", addForeignKeyOperation.ForeignKeyName);
-            Assert.Equal("dbo.T1", addForeignKeyOperation.TableName);
-            Assert.Equal("dbo.T0", addForeignKeyOperation.ReferencedTableName);
-            Assert.Equal(new[] { "Id" }, addForeignKeyOperation.ColumnNames);
-            Assert.Equal(new[] { "Id" }, addForeignKeyOperation.ReferencedColumnNames);
-            // TODO: Cascading behaviors not supported. Issue #333
-            //Assert.True(addForeignKeyOperation.CascadeDelete);
-
-            var createIndexOperation = (CreateIndexOperation)operations[3];
-
-            Assert.Equal("IX", createIndexOperation.IndexName);
-            Assert.Equal("dbo.T1", createIndexOperation.TableName);
-            Assert.Equal(new[] { "Id" }, createIndexOperation.ColumnNames);
-            Assert.True(createIndexOperation.IsUnique);
+            Assert.Equal(1, createTableOperation1.Table.ForeignKeys.Count);
+            Assert.Equal(1, createTableOperation1.Table.Indexes.Count);
         }
 
         [Fact]
@@ -94,13 +79,11 @@ namespace Microsoft.Data.Entity.Migrations.Tests
 
             var operations = new TestModelDiffer(new TestDatabaseBuilder()).DropSchema(modelBuider.Model);
 
-            Assert.Equal(3, operations.Count);
+            Assert.Equal(2, operations.Count);
 
-            var dropForeignKeyOperation = (DropForeignKeyOperation)operations[0];
-            var dropTableOperation0 = (DropTableOperation)operations[1];
-            var dropTableOperation1 = (DropTableOperation)operations[2];
+            var dropTableOperation0 = (DropTableOperation)operations[0];
+            var dropTableOperation1 = (DropTableOperation)operations[1];
 
-            Assert.Equal("FK", dropForeignKeyOperation.ForeignKeyName);
             Assert.Equal("dbo.T0", dropTableOperation0.TableName);
             Assert.Equal("dbo.T1", dropTableOperation1.TableName);
         }
@@ -205,32 +188,14 @@ namespace Microsoft.Data.Entity.Migrations.Tests
                 sourceModelBuilder.Model, targetModelBuilder.Model);
             var targetDbModel = databaseBuilder.GetDatabase(targetModelBuilder.Model);
 
-            Assert.Equal(3, operations.Count);
+            Assert.Equal(1, operations.Count);
             Assert.IsType<CreateTableOperation>(operations[0]);
-            Assert.IsType<AddForeignKeyOperation>(operations[1]);
-            Assert.IsType<CreateIndexOperation>(operations[2]);
 
             var createTableOperation = (CreateTableOperation)operations[0];
 
             Assert.Same(targetDbModel.Tables[1], createTableOperation.Table);
-
-            var addForeignKeyOperation = (AddForeignKeyOperation)operations[1];
-
-            Assert.Equal("FK", addForeignKeyOperation.ForeignKeyName);
-            Assert.Equal("B", addForeignKeyOperation.TableName);
-            Assert.Equal("A", addForeignKeyOperation.ReferencedTableName);
-            Assert.Equal(new[] { "Id" }, addForeignKeyOperation.ColumnNames);
-            Assert.Equal(new[] { "Id" }, addForeignKeyOperation.ReferencedColumnNames);
-
-            // TODO: Cascading behaviors not supported. Issue #333
-            //Assert.True(addForeignKeyOperation.CascadeDelete);
-
-            var createIndexOperation = (CreateIndexOperation)operations[2];
-
-            Assert.Equal("IX", createIndexOperation.IndexName);
-            Assert.Equal("B", createIndexOperation.TableName);
-            Assert.Equal(new[] { "Id" }, createIndexOperation.ColumnNames);
-            Assert.True(createIndexOperation.IsUnique);
+            Assert.Equal(1, createTableOperation.Table.ForeignKeys.Count);
+            Assert.Equal(1, createTableOperation.Table.Indexes.Count);
         }
 
         [Fact]

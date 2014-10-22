@@ -337,7 +337,8 @@ namespace MyNamespace
                         Id = c.Int(nullable: false),
                         HouseIdColumn = c.Int(name: ""House[\""Id]Column"", nullable: false)
                     })
-                .PrimaryKey(""My[\""PK]"", t => t.Id);
+                .PrimaryKey(""My[\""PK]"", t => t.Id)
+                .ForeignKey(""My_[\""FK]"", t => t.HouseIdColumn, ""[Ho!use[]]]"", new[] { ""Id"" });
             
             migrationBuilder.CreateTable(""dbo.[Ord[\""e.r]]s]"",
                 c => new
@@ -345,19 +346,12 @@ namespace MyNamespace
                         OrderId = c.Int(nullable: false),
                         CustomerId = c.Int(nullable: false)
                     })
-                .PrimaryKey(""PK_dbo.Ord[\""e.r]s"", t => t.OrderId);
-            
-            migrationBuilder.AddForeignKey(""dbo.[Cus[\""om.er]]s]"", ""My_[\""FK]"", new[] { ""House[\""Id]Column"" }, ""[Ho!use[]]]"", new[] { ""Id"" }, cascadeDelete: false);
-            
-            migrationBuilder.AddForeignKey(""dbo.[Ord[\""e.r]]s]"", ""FK_dbo.Ord[\""e.r]s_dbo.Cus[\""om.er]s_CustomerId"", new[] { ""CustomerId"" }, ""dbo.[Cus[\""om.er]]s]"", new[] { ""Id"" }, cascadeDelete: false);
+                .PrimaryKey(""PK_dbo.Ord[\""e.r]s"", t => t.OrderId)
+                .ForeignKey(""FK_dbo.Ord[\""e.r]s_dbo.Cus[\""om.er]s_CustomerId"", t => t.CustomerId, ""dbo.[Cus[\""om.er]]s]"", new[] { ""Id"" });
         }
         
         public override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropForeignKey(""dbo.[Cus[\""om.er]]s]"", ""My_[\""FK]"");
-            
-            migrationBuilder.DropForeignKey(""dbo.[Ord[\""e.r]]s]"", ""FK_dbo.Ord[\""e.r]s_dbo.Cus[\""om.er]s_CustomerId"");
-            
             migrationBuilder.DropTable(""[Ho!use[]]]"");
             
             migrationBuilder.DropTable(""dbo.[Cus[\""om.er]]s]"");
