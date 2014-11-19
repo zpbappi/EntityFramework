@@ -3,6 +3,7 @@
 
 using System.Diagnostics;
 using System.Reflection;
+using System.Linq;
 
 // ReSharper disable once CheckNamespace
 
@@ -11,6 +12,21 @@ namespace System
     [DebuggerStepThrough]
     internal static class SharedTypeExtensions
     {
+        private static readonly Type[] _primitivePropertyTypes =
+            {
+                typeof(bool),
+                typeof(byte[]),
+                typeof(char),
+                typeof(DateTime),
+                typeof(DateTimeOffset),
+                typeof(decimal),
+                typeof(double),
+                typeof(float),
+                typeof(Guid),
+                typeof(string),
+                typeof(TimeSpan)
+            };
+
         public static Type UnwrapNullableType(this Type type)
         {
             return Nullable.GetUnderlyingType(type) ?? type;
@@ -37,14 +53,25 @@ namespace System
 
         public static bool IsInteger(this Type type)
         {
+            type = type.UnwrapNullableType();
+
             return type == typeof(int)
                    || type == typeof(long)
                    || type == typeof(short)
                    || type == typeof(byte)
-                   || type == typeof(int?)
-                   || type == typeof(long?)
-                   || type == typeof(short?)
-                   || type == typeof(byte?);
+                   || type == typeof(uint)
+                   || type == typeof(ulong)
+                   || type == typeof(ushort)
+                   || type == typeof(sbyte);
+        }
+        
+        public static bool IsPrimitiveType(this Type propertyType)
+        {
+            propertyType = propertyType.UnwrapNullableType();
+
+            return propertyType.IsInteger()
+                   || _primitivePropertyTypes.Contains(propertyType)
+                   || propertyType.GetTypeInfo().IsEnum;
         }
     }
 }
